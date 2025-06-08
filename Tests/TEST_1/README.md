@@ -6,7 +6,7 @@ Automated testing of Angor with C#, .NET 8, Playwright, and xUnit.
 
 ### 1. Clone the repo
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/mistic0xb/e2e.git
 cd e2e
 ```
 
