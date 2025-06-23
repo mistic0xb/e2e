@@ -13,22 +13,32 @@ cd e2e
 ### 2. Install dependencies
 ```bash
 dotnet restore
-dotnet build
-playwright install
+```
+```bash
+# You should have node 20+ install
+npm init playwright@latest --yes && npx playwright install --with-deps chromium
 ```
 
-### 3. Run tests
+### 3. Run tests (various options)
+- **For testing in console:**
 ```bash
 dotnet test
+```
+
+- **For testing with step-by-step UI-mode:**
+```bash
+PWDEBUG=1 dotnet test
+```
+
+- **For testing with automated UI-mode:**
+```bash
+HEADED=1 dotnet test
 ```
 
 ## Run specific tests
 ```bash
 # Run specific test suite
 dotnet test --filter "FullyQualifiedName~TEST_1"
-
-# Run specific test class
-dotnet test --filter "ClassName=InvestorFounderTests"
 ```
 
 # What does this test cover ?
