@@ -6,10 +6,10 @@ namespace e2e.Tests.TEST_1;
 
 public static class WalletTestHelper
 {
-    public const string WALLET_URL = "https://test.angor.io/wallet";
+    public const string WALLET_URL = "https://test.angor.io/wallet"; //"http://localhost:5062/wallet";  
     public const string DEFAULT_PASSWORD = "123";
-    public const string FOUNDER_TEST_PROJECT_ID = "angor1qe9cpnllqu5tjws3pawy7k2ek5ue4phw5e4g6lh";
-    public const string FOUNDER_TEST_PROJECT_NAME = "auto_test1";
+    public const string FOUNDER_TEST_PROJECT_ID = "angor1qnuhyz49aj8wq2xg7d44776za8qyqnwac7rvwe8"; // 29-investors: "angor1qe9cpnllqu5tjws3pawy7k2ek5ue4phw5e4g6lh";
+    public const string FOUNDER_TEST_PROJECT_NAME = "new_auto_test";
     private static readonly ILogger _logger = TestLogger.Create("WalletTestHelper");
 
 
@@ -41,7 +41,7 @@ public static class WalletTestHelper
         await page.GetByRole(AriaRole.Button, new() { Name = "Create wallet" }).ClickAsync();
 
         // Get the seed phrase
-        var viewSeedButton =  page.GetByRole(AriaRole.Button, new() { Name = "View Seed" }).First;
+        var viewSeedButton = page.GetByRole(AriaRole.Button, new() { Name = "View Seed" }).First;
         await viewSeedButton.ClickAsync();
 
         passwordInput = page.GetByRole(AriaRole.Textbox).First;
@@ -66,19 +66,17 @@ public static class WalletTestHelper
         await page.GetByRole(AriaRole.Button, new() { Name = "Get Test Coins" }).ClickAsync();
 
         // Initial wait
-        await Task.Delay(45000);
+        await Task.Delay(10000);
 
         // Refresh and wait
         await page.GetByRole(AriaRole.Button, new() { Name = "refresh" }).ClickAsync();
-        await Task.Delay(10000);
 
         // Wait for positive balance
         return await WaitForPositiveBalance(page);
     }
 
-    public static async Task<double> WaitForPositiveBalance(IPage page, int maxRetries = 10)
+    public static async Task<double> WaitForPositiveBalance(IPage page, int maxRetries = 30)
     {
-        double btcValue = 0;
         var retries = maxRetries;
 
         while (retries > 0)
@@ -86,7 +84,7 @@ public static class WalletTestHelper
             var btcValueElement = page.Locator(".btc-value");
             var btcValueText = await btcValueElement.TextContentAsync();
 
-            if (!string.IsNullOrWhiteSpace(btcValueText) && double.TryParse(btcValueText, out btcValue) && btcValue > 0)
+            if (!string.IsNullOrWhiteSpace(btcValueText) && double.TryParse(btcValueText, out double btcValue) && btcValue > 0)
             {
                 _logger.LogInformation($"TBTC Balance obtained: {btcValue}");
                 return btcValue;
@@ -95,7 +93,7 @@ public static class WalletTestHelper
             _logger.LogInformation($"Waiting for TBTC balance... Attempt {maxRetries - retries + 1}/{maxRetries}");
 
             await page.GetByRole(AriaRole.Button, new() { Name = "refresh" }).ClickAsync();
-            await Task.Delay(10000);
+            await Task.Delay(5000);
             retries--;
         }
 
@@ -131,19 +129,20 @@ public static class WalletTestHelper
         var passwordInput = page.Locator("#passwordInput");
         await passwordInput.ClickAsync();
         await passwordInput.FillAsync(password);
+        await page.Locator("label.form-check-label[for='cacheActive']").ClickAsync(); // check the box: remain password active
         await passwordInput.PressAsync("Enter");
 
-        // Select standard investment
+        // Select "priority" investment
         await page.GetByText("Priority").ClickAsync();
 
         // Confirm investment
         await page.GetByRole(AriaRole.Button, new() { Name = "Confirm Investment" }).ClickAsync();
-        await Task.Delay(5000); // waiting to confirm
+        await Task.Delay(3000); // waiting to confirm
 
         // Go To Portfolio page to confirm
         await page.GetByRole(AriaRole.Link, new() { Name = "portfolio" }).ClickAsync();
-        await Task.Delay(5000); // waiting to confirm
+        await Task.Delay(1000); // waiting to confirm
 
         _logger.LogInformation($"Investment of {amount} BTC completed");
-    } 
+    }
 }

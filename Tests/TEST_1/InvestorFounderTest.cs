@@ -10,10 +10,12 @@ namespace e2e.Tests.TEST_1;
 public class InvestorFounderTests : PageTest
 {
     private const double INVESTMENT_AMOUNT = 1.0;
-    private const string FOUNDER_WALLET_PHRASE = "frown skill mail speak clever hour fury bonus profit doll pioneer town";
+    private const string FOUNDER_WALLET_PHRASE = "luggage mail figure puzzle wrap bike torch theory offer marine labor decline"; // 29 investors:"frown skill mail speak clever hour fury bonus profit doll pioneer town";
 
     // Static storage for wallet info across test runs
     private static readonly Dictionary<string, WalletInfo> StoredWallets = new();
+    // Static storage for page-context info across test runs
+    private static readonly Dictionary<string, IPage> InvestorPages = new();
 
     // Initialize Logger
     private readonly ILogger<InvestorFounderTests> _logger = TestLogger.Create<InvestorFounderTests>();
@@ -27,39 +29,19 @@ public class InvestorFounderTests : PageTest
 
     [Fact]
     // Investor 1
-    public async Task Test1_CreateInvestor1AndInvest()
+    public async Task Test1_CompleteInvestorFounderFlow()
     {
-        _logger.LogInformation("=== TEST_1[1.1]: Creating Investor 1 ===");
+        _logger.LogInformation("=== TEST_1: Starting Complete Investor-Founder Flow ===");
+
+        // Step 1: Create Investor and Invest
+        _logger.LogInformation("=== Phase 1: Creating Investor 1 ===");
         await CreateInvestorAndInvest("investor1");
         Assert.True(StoredWallets.ContainsKey("investor1"));
-        _logger.LogInformation("investor1 wallet stored for future tests");
-    }
+        _logger.LogInformation("investor1 wallet stored and investment complete");
 
-    // [Fact]
-    // // Investor 2
-    // public async Task Test1_CreateInvestor2AndInvest()
-    // {
-        // _logger.LogInformation("=== TEST_1[1.1]: Creating Investor 2 ===");
-    //     await CreateInvestorAndInvest("investor2");
-    //     Assert.True(StoredWallets.ContainsKey("investor2"));
-        // _logger.LogInformation("investor2 wallet stored for future tests");
-    // }
 
-    // [Fact]
-    // // Investor 3
-    // public async Task Test1_CreateInvestor3AndInvest()
-    // {
-    //     Console.WriteLine("=== TEST_1[1.1]: Creating Investor 3 ===");
-    //     await CreateInvestorAndInvest("investor3");
-    //     Assert.True(StoredWallets.ContainsKey("investor3"));
-    //     Console.WriteLine("investor3 wallet stored for future tests");
-    // }
-
-    [Fact]
-    public async Task Test2_FounderAcceptsInvestments()
-    {
-        _logger.LogInformation("=== TEST_1 [1.2]: Founder Accepts Investments ===");
-
+        // Step 2: Founder Accepts Investments
+        _logger.LogInformation("=== Phase 2: Founder Accepts Investments ===");
         // Create new browser context for founder
         var browser = await Playwright.Chromium.LaunchAsync();
         var context = await browser.NewContextAsync();
@@ -69,10 +51,10 @@ public class InvestorFounderTests : PageTest
         {
             await FounderApprovalFlow(founderPage);
 
-            // After founder approves, handle all investors
+            // Step 3: Process investor using existing page context
+            _logger.LogInformation("=== Phase 3: Processing Investor with Same Context ===");
             await HandleAllInvestorsFlow(founderPage);
-
-            _logger.LogInformation("Founder approval and investor flows completed!");
+            _logger.LogInformation("Complete investor-founder flow completed successfully!");
         }
         finally
         {
@@ -105,6 +87,9 @@ public class InvestorFounderTests : PageTest
                 WalletSeed = walletSeed,
             };
 
+            // Store page-context info
+            InvestorPages[investorName] = Page;
+
             _logger.LogInformation($"{investorName} process completed successfully!");
         }
         catch (Exception e)
@@ -118,20 +103,18 @@ public class InvestorFounderTests : PageTest
     {
         _logger.LogInformation("️Starting Founder approval flow...");
 
-        // Steps 1-9: Import founder wallet
+        // Steps 1-7: Import founder wallet
         await ImportFounderWallet(founderPage);
 
-        // Steps 8-17: Founder operations
         _logger.LogInformation("Handling founder operations...");
-
         // Step 8: Click link "Founder"
         await founderPage.GetByRole(AriaRole.Link, new() { Name = "Founder" }).ClickAsync();
 
         // Step 9: Click button "Scan for Founder Projects"
         await founderPage.GetByRole(AriaRole.Button, new() { Name = "Scan for Founder Projects" }).ClickAsync();
 
-        // Step 10: Click link "auto_test1"
-        await founderPage.GetByRole(AriaRole.Link, new() { Name = "auto_test1" }).ClickAsync();
+        // Step 10: Click link : PROJECT_NAME
+        await founderPage.GetByRole(AriaRole.Link, new() { Name = WalletTestHelper.FOUNDER_TEST_PROJECT_NAME }).ClickAsync();
 
         // Step 11: Click button "Approve Investments"
         await founderPage.GetByRole(AriaRole.Link, new() { Name = "Approve Investments" }).ClickAsync();
@@ -141,6 +124,7 @@ public class InvestorFounderTests : PageTest
         await founderPage.WaitForSelectorAsync("input[type='password']", new() { State = WaitForSelectorState.Visible, Timeout = 10000 });
         var passwordInput = founderPage.Locator("input[type='password']");
         await passwordInput.FillAsync("123");
+        await founderPage.Locator("label.form-check-label[for='cacheActive']").ClickAsync(); // check the box: remain password active
         await passwordInput.PressAsync("Enter");
 
         // Step x: Click button "Refresh"
@@ -152,8 +136,8 @@ public class InvestorFounderTests : PageTest
         // Step 14: Click link "Founder"
         await founderPage.GetByRole(AriaRole.Link, new() { Name = "Founder" }).ClickAsync();
 
-        // Step 15: Click link "auto_test1"
-        await founderPage.GetByRole(AriaRole.Link, new() { Name = "auto_test1" }).ClickAsync();
+        // Step 15: Click link: <PROJECT_NAME>
+        await founderPage.GetByRole(AriaRole.Link, new() { Name = WalletTestHelper.FOUNDER_TEST_PROJECT_NAME }).ClickAsync();
 
         _logger.LogInformation("Founder approval flow completed!");
     }
@@ -198,11 +182,33 @@ public class InvestorFounderTests : PageTest
         foreach (var investor in StoredWallets.Values)
         {
             _logger.LogInformation($"Processing investor: {investor.Name}");
-            await ProcessInvestorFlow(investor);
+            if (InvestorPages.TryGetValue(investor.Name, out var investorPage))
+            {
+                // Use existing page context, no investor wallet import
+                await ProcessInvestorFlow(investorPage, investor);
+            }
+            else
+            {
+                _logger.LogError($"No page context found for investor: {investor.Name}");
+            }
         }
 
         // Continue with founder steps 18-22
         await CompleteFounderManageFunds(founderPage);
+
+        foreach (var investor in StoredWallets.Values)
+        {
+            _logger.LogInformation($"Processing investor refund and penalty: {investor.Name}");
+            if (InvestorPages.TryGetValue(investor.Name, out var investorPage))
+            {
+                // Func InvestorRefundOperations
+                await CompleteInvestorRefundAndPenaltyOperations(investorPage);
+            }
+            else
+            {
+                _logger.LogError($"No page context found for investor: {investor.Name}");
+            }
+        }
     }
 
     private async Task CompleteFounderManageFunds(IPage founderPage)
@@ -210,49 +216,50 @@ public class InvestorFounderTests : PageTest
         _logger.LogInformation("Managing founder funds...");
 
         // Step 18: Click button "Manage funds"
-        await founderPage.GetByRole(AriaRole.Button, new() { Name = "Manage funds" }).ClickAsync();
+        await founderPage.GetByRole(AriaRole.Link, new() { Name = "Manage funds" }).ClickAsync();
 
-        // Step 19: Click button "Refresh"
+        // Step 19: Click button "Refresh" : Taking too much time to refresh
         await founderPage.GetByRole(AriaRole.Button, new() { Name = "Refresh" }).ClickAsync();
 
         // Step 20: Click first button with name "Expand"
         await founderPage.GetByRole(AriaRole.Button, new() { Name = "Expand" }).First.ClickAsync();
 
-        // Step 21: Click first checkbox with label "TBTC"
-        await founderPage.GetByLabel("TBTC").First.ClickAsync();
+        // Step 21: Click button "Select All Available" 
+        await founderPage.GetByRole(AriaRole.Button, new() { Name = "Select All Available" }).ClickAsync();
 
         // Step 22: Click button "Claim Selected Coins"
         await founderPage.GetByRole(AriaRole.Button, new() { Name = "Claim Selected Coins" }).ClickAsync();
 
+        // // Step 23: Enter pass
+        // var passwordInput = founderPage.Locator("input[type='password']");
+        // await passwordInput.FillAsync("123");
+        // await passwordInput.PressAsync("Enter");
+
+        // Step 24: Select "priority" investment
+        await founderPage.GetByText("Priority").ClickAsync();
+
+        // Step 25: Click btn "Confirm Transaction"
+        await founderPage.GetByRole(AriaRole.Button, new() { Name = "Confirm Transaction" }).ClickAsync();
+        await Task.Delay(2000); // wait a bit for confirmation
+
         _logger.LogInformation("Founder funds management completed!");
     }
 
-    private async Task ProcessInvestorFlow(WalletInfo investor)
+    private async Task ProcessInvestorFlow(IPage investorPage, WalletInfo investor)
     {
         _logger.LogInformation($"Processing investor flow for: {investor.Name}");
 
-        // Create new browser context for this investor
-        var browser = await Playwright.Chromium.LaunchAsync();
-        var context = await browser.NewContextAsync();
-        var investorPage = await context.NewPageAsync();
-
         try
         {
-            // Steps 1-9: Import investor wallet
-            await ImportInvestorWallet(investorPage, investor);
-
-            // Steps 10-15: Investor operations
+            // Steps 10-15: Investor operations (using existing wallet)
             await CompleteInvestorOperations(investorPage);
-
-            // Step 16: Wipe wallet data
-            await WipeWalletData(investorPage);
 
             _logger.LogInformation($"Investor {investor.Name} flow completed!");
         }
-        finally
+        catch (Exception e)
         {
-            await context.CloseAsync();
-            await browser.CloseAsync();
+            _logger.LogError($"Error processing investor {investor.Name}: {e.Message}");
+            throw;
         }
     }
 
@@ -290,34 +297,188 @@ public class InvestorFounderTests : PageTest
         _logger.LogWarning($"Wallet imported for {investor.Name}!");
     }
 
+    private async Task CompleteInvestorRefundAndPenaltyOperations(IPage investorPage)
+    {
+        // Step 16: Click link: "Manage Investment"
+        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Manage Investment" }).ClickAsync();
+        await Task.Delay(5000);
+
+        // Step 17: Check the table
+        /**
+        1st stage -> Spent by founder
+        2nd stage -> Not Spent
+        3nd stage -> Not Spent
+        **/
+
+        // Define expected data
+        var expectedStage1Status = "Spent by founder";
+        var expectedStage2Status = "Not Spent";
+        var expectedStage3Status = "Not Spent";
+
+        // Locate the table body
+        var tableBody = Page.Locator("table.table.align-items-center.mb-0 tbody");
+
+        // Get the rows in the table
+        var rows = await tableBody.Locator("tr").AllAsync();
+
+        // Assertions for Stage 1
+        var stage1Row = rows[0];
+        var stage1StatusElement = await stage1Row.Locator("td:nth-child(3) span").ElementHandleAsync(); // Find the span in the 3rd column
+        var stage1StatusText = await stage1StatusElement!.TextContentAsync();
+        Assert.Contains(expectedStage1Status, stage1StatusText!);
+
+        // Assertions for Stage 2
+        var stage2Row = rows[1];
+        var stage2StatusElement = await stage2Row.Locator("td:nth-child(3) span").ElementHandleAsync(); // Find the span in the 3rd column
+        var stage2StatusText = await stage2StatusElement!.TextContentAsync();
+        Assert.Contains(expectedStage2Status, stage2StatusText!);
+
+        // Assertions for Stage 3
+        var stage3Row = rows[2];
+        var stage3StatusElement = await stage3Row.Locator("td:nth-child(3) span").ElementHandleAsync(); // Find the span in the 3rd column
+        var stage3StatusText = await stage3StatusElement!.TextContentAsync();
+        Assert.Contains(expectedStage3Status, stage3StatusText!);
+        _logger.LogInformation("Table verification successful!");
+
+        // Step 18: Click "Recover Funds"
+        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Recover Funds" }).ClickAsync();
+
+        // // Step 19: Enter pass with condition
+        // var dialogLocator = investorPage.Locator("css=[role='dialog'],[aria-modal='true'],.modal");
+        // bool isDialogPresent = await dialogLocator.IsVisibleAsync();
+        // var passwordInput = investorPage.Locator("input[type='password']");
+        // if (isDialogPresent)
+        // {
+        //     await passwordInput.FillAsync("123");
+        //     await passwordInput.PressAsync("Enter");
+        //     await Task.Delay(1000); // wait for confirmation
+        // }
+
+        // Step 24: Select "priority" investment
+        await investorPage.GetByText("Priority").ClickAsync();
+
+        // Step 25: Click btn "Confirm"
+        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Confirm" }).ClickAsync();
+
+        // Step 26: Click link "Portfolio"
+        await investorPage.GetByRole(AriaRole.Link, new() { Name = "Portfolio" }).ClickAsync();
+
+        // Step 27: Click link "Penalties"
+        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Penalties" }).ClickAsync();
+        await Task.Delay(1000); // wait for confirmation
+
+        // Step 28: Click btn: "Claim Penalty:
+        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Claim Penalty" }).ClickAsync();
+
+        // Step 29: Check the table
+        /**
+            1st stage -> Spent by founder
+            2nd stage -> Penalty can be released 
+            3nd stage -> Penalty can be released
+        **/
+
+        // Define expected data
+        expectedStage1Status = "Spent by founder";
+        expectedStage2Status = "Penalty can be released";
+        expectedStage3Status = "Penalty can be released";
+
+        // Locate the table body
+        tableBody = Page.Locator("table.table.align-items-center.mb-0 tbody");
+
+        // Get the rows in the table
+        rows = await tableBody.Locator("tr").AllAsync();
+
+        // Assertions for Stage 1
+        stage1Row = rows[0];
+        stage1StatusElement = await stage1Row.Locator("td:nth-child(3) span").ElementHandleAsync(); // Find the span in the 3rd column
+        stage1StatusText = await stage1StatusElement!.TextContentAsync();
+        Assert.Contains(expectedStage1Status, stage1StatusText!);
+
+        // Assertions for Stage 2
+        stage2Row = rows[1];
+        stage2StatusElement = await stage2Row.Locator("td:nth-child(3) span").ElementHandleAsync(); // Find the span in the 3rd column
+        stage2StatusText = await stage2StatusElement!.TextContentAsync();
+        Assert.Contains(expectedStage2Status, stage2StatusText!);
+
+        // Assertions for Stage 3
+        stage3Row = rows[2];
+        stage3StatusElement = await stage3Row.Locator("td:nth-child(3) span").ElementHandleAsync(); // Find the span in the 3rd column
+        stage3StatusText = await stage3StatusElement!.TextContentAsync();
+        Assert.Contains(expectedStage3Status, stage3StatusText!);
+        _logger.LogInformation("Table verification successful!");
+
+
+        //-----
+        // Step 30: Click btn "Release Funds"
+        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Release Funds" }).ClickAsync();
+
+        // Step 32: Select checkbox "Custom Fee Rate" - Wait for modal to be fully loaded
+        await investorPage.WaitForSelectorAsync(".custom-fee-toggle");
+        await investorPage.GetByText("Custom Fee Rate").ClickAsync();
+
+        // Step 33: Wait for the fee input field to appear after checking custom fee toggle
+        await investorPage.WaitForSelectorAsync("input[type='number']", new() { State = WaitForSelectorState.Visible });
+
+        // Fill the custom fee input
+        var customInput = investorPage.Locator("input[type='number']");
+        await customInput.FillAsync("10000");
+        await customInput.PressAsync("Enter");
+        // Wait for the fee to be processed/validated
+        await Task.Delay(1500);
+
+        // Step 34: Wait for Confirm button to be enabled and click
+        var confirmButton = investorPage.GetByRole(AriaRole.Button, new() { Name = "Confirm" });
+        await confirmButton.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+
+        await confirmButton.ClickAsync();
+        await Task.Delay(3000); // Increased wait time for transaction processing
+
+        // // Step 30: Click btn "Release Funds"
+        // await investorPage.GetByRole(AriaRole.Button, new() { Name = "Release Funds" }).ClickAsync();
+
+        // // // Step 31: Enter pass
+        // // passwordInput = investorPage.Locator("input[type='password']");
+        // // await passwordInput.FillAsync("123");
+        // // await passwordInput.PressAsync("Enter");
+
+        // // Step 32: Select checkbox "Custom Fee Rate"
+        // await investorPage.GetByText("Custom Fee Rate").ClickAsync();
+
+        // // Step 33: Enter custom fee rate: 10_000 
+        // var feeRateInput = investorPage.Locator("input");
+        // await feeRateInput.Last.FillAsync("10000");
+        // await feeRateInput.Last.PressAsync("Enter");
+        // await Task.Delay(1000); // Additional delay for UI/backend processing
+
+        // // Step 34: Click btn "Confirm"
+        // await investorPage.GetByRole(AriaRole.Button, new() { Name = "Confirm" }).ClickAsync();
+        // await Task.Delay(2000); // wait to confirm
+
+        // Step 1: Goto wallet page
+        await investorPage.GotoAsync(WalletTestHelper.WALLET_URL);
+
+        _logger.LogInformation("==== TESTING SUCCESSFUL ====");
+        // check in the wallet(calculate the recovered value)
+        // asset the result
+    }
+
     private async Task CompleteInvestorOperations(IPage investorPage)
     {
+        _logger.LogInformation("Starting investor operations...");
         // Step 10: Click link "Portfolio"
         await investorPage.GetByRole(AriaRole.Link, new() { Name = "Portfolio" }).ClickAsync();
 
-        // Step 10: Click button: "Refresh"
-        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Refresh" }).ClickAsync();
+        // Step 13: Click link "Completed Investment"
+        await investorPage.GetByRole(AriaRole.Link, new() { Name = "Completed Investment" }).ClickAsync();
 
-        // Step 11: Enter Pass
-        var passwordInput = investorPage.GetByRole(AriaRole.Textbox, new() { Name = "Enter password" });
-        await passwordInput.FillAsync("123");
-        await passwordInput.PressAsync("Enter");
-
-        // Step 12: Click button: "Refresh"
-        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Refresh" }).ClickAsync();
-
-        // Step 11: Click link "Complete Investments"
-        await investorPage.GetByRole(AriaRole.Link, new() { Name = "Complete Investments" }).ClickAsync();
-
-        // Step 12: Dialog box operations
-        _logger.LogInformation("Handling investment completion dialog...");
-        await investorPage.WaitForSelectorAsync("input[type='password']", new() { State = WaitForSelectorState.Visible, Timeout = 10000 });
-        passwordInput = investorPage.Locator("input[type='password']");
-        await passwordInput.FillAsync("123");
-        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Submit" }).ClickAsync();
-
-        // Step 13: Wait 1 second
-        await Task.Delay(1000);
+        // // Step 12: Dialog box operations
+        // _logger.LogInformation("Handling investment completion dialog...");
+        // await investorPage.WaitForSelectorAsync("input[type='password']", new() { State = WaitForSelectorState.Visible, Timeout = 10000 });
+        // var passwordInput = investorPage.Locator("input[type='password']");
+        // await passwordInput.FillAsync("123");
+        // await investorPage.GetByRole(AriaRole.Button, new() { Name = "Submit" }).ClickAsync();
+        // // Step 13: Wait 1 second
+        // await Task.Delay(1000);
 
         // Step 14: Click button "Invest"
         await investorPage.GetByRole(AriaRole.Button, new() { Name = "Invest" }).ClickAsync();
@@ -326,24 +487,5 @@ public class InvestorFounderTests : PageTest
         await Task.Delay(1000);
 
         _logger.LogInformation("Investor operations completed!");
-    }
-
-    private async Task WipeWalletData(IPage investorPage)
-    {
-        _logger.LogInformation(" Wiping wallet data...");
-
-        // Step 16: Click link "Settings"
-        await investorPage.GetByRole(AriaRole.Link, new() { Name = "Settings" }).ClickAsync();
-
-        // Step 2: Click "Wipe Data"
-        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Wipe Data" }).ClickAsync();
-
-        // Step 3: Check "Confirm"
-        await investorPage.GetByText("Confirm?").Last.ClickAsync(new() { Button = MouseButton.Left });
-
-        // Step 4: Click "Wipe Storage"
-        await investorPage.GetByRole(AriaRole.Button, new() { Name = "Wipe Storage" }).ClickAsync();
-
-        _logger.LogInformation("Wallet data wiped!");
     }
 }

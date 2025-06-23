@@ -18,19 +18,18 @@ dotnet restore
 # You should have node 20+ install
 npx playwright install --with-deps chromium
 ```
-
 ### 3. Run tests (various options)
-- **For testing in console:**
+- **For testing in console: (Option 1)**
 ```bash
 dotnet test
 ```
 
-- **For testing with step-by-step UI-mode:**
+- **For testing with step-by-step UI-mode: (Option 2)**
 ```bash
 PWDEBUG=1 dotnet test
 ```
 
-- **For testing with automated UI-mode:**
+- **For testing with automated UI-mode: (Option 3)**
 ```bash
 HEADED=1 dotnet test
 ```
