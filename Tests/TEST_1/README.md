@@ -16,7 +16,7 @@ dotnet restore
 ```
 ```bash
 # You should have node 20+ install
-npm init playwright@latest --yes && npx playwright install --with-deps chromium
+npx playwright install --with-deps chromium
 ```
 
 ### 3. Run tests (various options)
