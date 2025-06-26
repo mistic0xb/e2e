@@ -229,10 +229,10 @@ public class InvestorFounderTests : PageTest
         // Step 22: Click button "Claim Selected Coins"
         await founderPage.GetByRole(AriaRole.Button, new() { Name = "Claim Selected Coins" }).ClickAsync();
 
-        // Step 23: Enter pass
-        var passwordInput = founderPage.Locator("input[type='password']");
-        await passwordInput.FillAsync("123");
-        await passwordInput.PressAsync("Enter");
+        // // Step 23: Enter pass
+        // var passwordInput = founderPage.Locator("input[type='password']");
+        // await passwordInput.FillAsync("123");
+        // await passwordInput.PressAsync("Enter");
 
         // Step 24: Select "priority" investment
         await founderPage.GetByText("Priority").ClickAsync();
