@@ -8,8 +8,9 @@ public static class WalletTestHelper
 {
     public const string WALLET_URL = "https://test.angor.io/wallet"; //"http://localhost:5062/wallet";  
     public const string DEFAULT_PASSWORD = "123";
-    public const string FOUNDER_TEST_PROJECT_ID = "angor1qnuhyz49aj8wq2xg7d44776za8qyqnwac7rvwe8"; // 29-investors: "angor1qe9cpnllqu5tjws3pawy7k2ek5ue4phw5e4g6lh";
-    public const string FOUNDER_TEST_PROJECT_NAME = "new_auto_test";
+    public const string FOUNDER_TEST_PROJECT_ID = "angor1q9wxdx2p0jgpvcrym3f0djr4eehpa2vtt6mhk7h"; // 29-investors: "angor1qe9cpnllqu5tjws3pawy7k2ek5ue4phw5e4g6lh";
+    public const string FOUNDER_TEST_PROJECT_NAME = "k2";
+    public const string FOUNDER_WALLET_PHRASE = "meadow tackle soon color wave lounge evidence favorite cloud prosper siren powder"; // 29 investors:"frown skill mail speak clever hour fury bonus profit doll pioneer town";
     private static readonly ILogger _logger = TestLogger.Create("WalletTestHelper");
 
 
@@ -136,7 +137,7 @@ public static class WalletTestHelper
         await page.GetByText("Priority").ClickAsync();
 
         // Confirm investment
-        await page.GetByRole(AriaRole.Button, new() { Name = "Confirm Investment" }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Send Request" }).ClickAsync();
         await Task.Delay(3000); // waiting to confirm
 
         // Go To Portfolio page to confirm
